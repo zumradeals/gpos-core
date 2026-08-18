@@ -7,6 +7,8 @@ namespace App\Http\Controllers;
 use App\Domain\Commerce\CommercialPermission;
 use App\Domain\Commerce\Quantity;
 use App\Domain\Identity\CurrentActor;
+use App\Models\CashRegister;
+use App\Models\CashSession;
 use App\Models\Product;
 use App\Models\PurchaseOrder;
 use App\Models\Sale;
@@ -26,6 +28,23 @@ final class HomeController extends Controller
         $context = $actor->activeContext();
 
         $todo = [];
+
+        if ($actor->can(CommercialPermission::OPERATE_CASH)) {
+            $hasActiveRegister = CashRegister::query()
+                ->where('context_id', $context->id)
+                ->where('status', CashRegister::STATUS_ACTIVE)
+                ->exists();
+
+            $hasOpenSession = CashSession::query()
+                ->where('context_id', $context->id)
+                ->where('responsible_core_reference', $actor->identity->reference)
+                ->where('status', CashSession::STATUS_OPEN)
+                ->exists();
+
+            if ($hasActiveRegister && ! $hasOpenSession) {
+                $todo[] = ['label' => "Ouvrez votre caisse avant d'encaisser en espèces", 'href' => route('cash.hub')];
+            }
+        }
 
         if ($actor->can(CommercialPermission::SELL)) {
             $draft = Sale::query()

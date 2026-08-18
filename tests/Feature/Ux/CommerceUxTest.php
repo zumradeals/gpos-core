@@ -9,6 +9,7 @@ use App\Domain\Identity\CoreIdentityReference;
 use App\Domain\Identity\CurrentActor;
 use App\Infrastructure\Identity\DevCoreSessionGateway;
 use App\Livewire\Sell;
+use App\Models\CashRegister;
 use App\Models\CommercialContext;
 use App\Models\CommercialContextMember;
 use App\Models\CommercialDocument;
@@ -76,12 +77,23 @@ final class CommerceUxTest extends TestCase
     public function test_the_sell_pay_confirm_and_receipt_journey_works_end_to_end(): void
     {
         $context = $this->context();
-        $this->member($context, 'IDN-SELLER', [CommercialPermission::SELL, CommercialPermission::VIEW_DOCUMENTS]);
+        $this->member($context, 'IDN-SELLER', [
+            CommercialPermission::SELL,
+            CommercialPermission::VIEW_DOCUMENTS,
+            CommercialPermission::MANAGE_CASH,
+            CommercialPermission::OPERATE_CASH,
+        ]);
         $product = $this->product($context, ['name' => 'Boisson locale', 'sale_price_xof' => 700]);
         StockBalance::query()->create(['context_id' => $context->id, 'product_id' => $product->id, 'quantity' => 25]);
 
         // La page se charge d'abord réellement en HTTP (parcours réel, pas seulement le composant).
         $this->signIn('IDN-SELLER')->get('/vendre')->assertOk()->assertSee('Boisson locale');
+
+        // Caisse ouverte pour de vrai (docs/implementation/LOT-003-CASH-REGISTER-CLOSING.md §36 :
+        // interdiction explicite d'un bypass de test) avant tout encaissement.
+        $this->signIn('IDN-SELLER')->post('/caisse/registres', ['name' => 'Caisse principale'])->assertRedirect();
+        $register = CashRegister::query()->where('context_id', $context->id)->sole();
+        $this->signIn('IDN-SELLER')->post('/caisse/registres/'.$register->id.'/ouvrir', ['opening_amount_xof' => 0])->assertRedirect();
 
         $identity = new CoreIdentityReference('IDN-SELLER');
         $member = CommercialContextMember::query()->where('context_id', $context->id)->where('core_identity_reference', 'IDN-SELLER')->sole();

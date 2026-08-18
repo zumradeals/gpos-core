@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Commerce;
 
 use App\Application\Commerce\ConfirmCashSale;
+use App\Application\Commerce\OpenCashSession;
 use App\Application\Commerce\ProductCatalog;
 use App\Application\Commerce\SaleDraftService;
 use App\Domain\Commerce\CommercialPermission;
@@ -12,6 +13,8 @@ use App\Domain\Commerce\Exceptions\CommercialContextSuspendedException;
 use App\Domain\Commerce\Exceptions\InsufficientStockException;
 use App\Domain\Identity\CoreIdentityReference;
 use App\Domain\Identity\CurrentActor;
+use App\Models\CashRegister;
+use App\Models\CashSession;
 use App\Models\CommercialAuditEvent;
 use App\Models\CommercialContext;
 use App\Models\CommercialContextMember;
@@ -21,6 +24,7 @@ use App\Models\Sale;
 use App\Models\StockBalance;
 use App\Models\StockMovement;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\TestCase;
 
@@ -162,7 +166,8 @@ final class ConfirmCashSaleTest extends TestCase
     {
         $context = $this->context();
         $service = $this->product($context, ['kind' => Product::KIND_SERVICE, 'track_stock' => false, 'sale_price_xof' => 2000]);
-        $actor = $this->actor($context, [CommercialPermission::SELL]);
+        $actor = $this->actor($context, [CommercialPermission::SELL, CommercialPermission::OPERATE_CASH]);
+        $this->openCashSession($context, $actor);
 
         $sale = app(SaleDraftService::class)->findOrCreateDraft($context, $actor->identity);
         app(SaleDraftService::class)->addOrIncrementLine($sale, $service);
@@ -215,12 +220,29 @@ final class ConfirmCashSaleTest extends TestCase
         $context = $this->context();
         $product = $this->product($context, ['sale_price_xof' => 1000]);
         $this->setBalance($product, '100');
-        $actor = $this->actor($context, [CommercialPermission::SELL]);
+        $actor = $this->actor($context, [CommercialPermission::SELL, CommercialPermission::OPERATE_CASH]);
+        $this->openCashSession($context, $actor);
 
         $sale = app(SaleDraftService::class)->findOrCreateDraft($context, $actor->identity);
         app(SaleDraftService::class)->addOrIncrementLine($sale, $product, $quantity);
 
         return $withProductReturn ? [$sale->fresh(), $actor, $product] : [$sale->fresh(), $actor];
+    }
+
+    /**
+     * Ouvre une vraie session de caisse pour l'acteur (docs/implementation/LOT-003-CASH-REGISTER-
+     * CLOSING.md §36 : interdiction explicite de tout bypass de test pour la caisse).
+     */
+    private function openCashSession(CommercialContext $context, CurrentActor $actor): CashSession
+    {
+        $register = CashRegister::query()->create([
+            'context_id' => $context->id,
+            'name' => 'Caisse de test',
+            'status' => CashRegister::STATUS_ACTIVE,
+            'created_by_core_reference' => $actor->identity->reference,
+        ]);
+
+        return app(OpenCashSession::class)->handle($register, $actor, 0, (string) Str::uuid());
     }
 
     private function setBalance(Product $product, string $quantity): void

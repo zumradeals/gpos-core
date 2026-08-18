@@ -9,6 +9,7 @@ use App\Application\Commerce\SaleDraftService;
 use App\Domain\Commerce\CommercialPermission;
 use App\Domain\Commerce\Exceptions\CommercialContextSuspendedException;
 use App\Domain\Commerce\Exceptions\InsufficientStockException;
+use App\Domain\Commerce\Exceptions\NoOpenCashSessionException;
 use App\Domain\Commerce\Exceptions\SaleNotConfirmableException;
 use App\Domain\Commerce\Quantity;
 use App\Domain\Identity\CurrentActor;
@@ -40,6 +41,8 @@ final class Sell extends Component
     public string $idempotencyKey;
 
     public ?string $errorMessage = null;
+
+    public bool $cashRegisterClosed = false;
 
     public function mount(): void
     {
@@ -81,10 +84,16 @@ final class Sell extends Component
     public function confirmCash()
     {
         $this->errorMessage = null;
+        $this->cashRegisterClosed = false;
         $actor = $this->actor();
 
         try {
             $result = app(ConfirmCashSale::class)->handle($this->sale(), $actor, $this->idempotencyKey);
+        } catch (NoOpenCashSessionException $e) {
+            $this->errorMessage = $e->getMessage();
+            $this->cashRegisterClosed = true;
+
+            return null;
         } catch (InsufficientStockException|SaleNotConfirmableException|CommercialContextSuspendedException $e) {
             $this->errorMessage = $e->getMessage();
 

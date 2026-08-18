@@ -3,6 +3,11 @@
 declare(strict_types=1);
 
 use App\Domain\Commerce\CommercialPermission;
+use App\Http\Controllers\CashClosureController;
+use App\Http\Controllers\CashHubController;
+use App\Http\Controllers\CashMovementController;
+use App\Http\Controllers\CashRegisterController;
+use App\Http\Controllers\CashSessionController;
 use App\Http\Controllers\ContextSwitchController;
 use App\Http\Controllers\DevActorController;
 use App\Http\Controllers\DocumentController;
@@ -70,6 +75,32 @@ Route::middleware(['actor.required'])->group(function (): void {
 
         Route::middleware(['commercial.permission:'.CommercialPermission::PAY_PURCHASES])->group(function (): void {
             Route::post('/acheter/commandes/{purchaseOrder}/payer', [PurchasePaymentController::class, 'store'])->name('purchases.pay');
+        });
+
+        // docs/implementation/LOT-003-CASH-REGISTER-CLOSING.md §20-24 : « Caisse » n'apparaît que
+        // si l'acteur possède au moins une permission caisse pertinente ; les actions elles-mêmes
+        // restent gardées séparément par leur propre permission.
+        $cashPermissions = implode(',', [
+            CommercialPermission::VIEW_CASH, CommercialPermission::OPERATE_CASH,
+            CommercialPermission::CLOSE_CASH, CommercialPermission::MANAGE_CASH,
+        ]);
+
+        Route::middleware(['commercial.permission:'.$cashPermissions])->group(function (): void {
+            Route::get('/caisse', [CashHubController::class, 'index'])->name('cash.hub');
+        });
+
+        Route::middleware(['commercial.permission:'.CommercialPermission::MANAGE_CASH])->group(function (): void {
+            Route::post('/caisse/registres', [CashRegisterController::class, 'store'])->name('cash.registers.store');
+        });
+
+        Route::middleware(['commercial.permission:'.CommercialPermission::OPERATE_CASH])->group(function (): void {
+            Route::post('/caisse/registres/{cashRegister}/ouvrir', [CashSessionController::class, 'store'])->name('cash.sessions.open');
+            Route::post('/caisse/mouvements', [CashMovementController::class, 'store'])->name('cash.movements.store');
+        });
+
+        Route::middleware(['commercial.permission:'.CommercialPermission::CLOSE_CASH])->group(function (): void {
+            Route::get('/caisse/cloturer', [CashClosureController::class, 'create'])->name('cash.closure.create');
+            Route::post('/caisse/cloturer', [CashClosureController::class, 'store'])->name('cash.closure.store');
         });
     });
 });

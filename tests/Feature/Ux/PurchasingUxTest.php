@@ -13,6 +13,7 @@ use App\Domain\Identity\CurrentActor;
 use App\Infrastructure\Identity\DevCoreSessionGateway;
 use App\Livewire\PurchaseOrderBuilder;
 use App\Livewire\ReceivePurchaseOrder;
+use App\Models\CashRegister;
 use App\Models\CommercialContext;
 use App\Models\CommercialContextMember;
 use App\Models\CommercialDocument;
@@ -74,6 +75,8 @@ final class PurchasingUxTest extends TestCase
             CommercialPermission::RECEIVE_PURCHASES,
             CommercialPermission::PAY_PURCHASES,
             CommercialPermission::VIEW_DOCUMENTS,
+            CommercialPermission::MANAGE_CASH,
+            CommercialPermission::OPERATE_CASH,
         ]);
         $product = $this->product($context, ['name' => 'Sac de riz 25kg']);
 
@@ -131,6 +134,12 @@ final class PurchasingUxTest extends TestCase
 
         $goodsReceiptDocument = CommercialDocument::query()->where('document_type', CommercialDocument::TYPE_GOODS_RECEIPT)->latest('issued_at')->firstOrFail();
         $this->signIn('IDN-BUYER')->get('/documents/'.$goodsReceiptDocument->id)->assertOk()->assertSee('Bon de réception');
+
+        // Caisse ouverte pour de vrai (docs/implementation/LOT-003-CASH-REGISTER-CLOSING.md §36 :
+        // interdiction explicite d'un bypass de test), avec un fonds de départ suffisant.
+        $this->signIn('IDN-BUYER')->post('/caisse/registres', ['name' => 'Caisse principale'])->assertRedirect();
+        $register = CashRegister::query()->where('context_id', $context->id)->sole();
+        $this->signIn('IDN-BUYER')->post('/caisse/registres/'.$register->id.'/ouvrir', ['opening_amount_xof' => 50000])->assertRedirect();
 
         // Paiement comptant, autorisé seulement maintenant que la commande est RECEIVED.
         $this->signIn('IDN-BUYER')

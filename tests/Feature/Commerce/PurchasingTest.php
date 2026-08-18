@@ -7,6 +7,7 @@ namespace Tests\Feature\Commerce;
 use App\Application\Commerce\CancelPurchaseOrder;
 use App\Application\Commerce\ConfirmCashSale;
 use App\Application\Commerce\ConfirmPurchaseOrder;
+use App\Application\Commerce\OpenCashSession;
 use App\Application\Commerce\PurchaseOrderDraftService;
 use App\Application\Commerce\ReceivePurchaseOrder;
 use App\Application\Commerce\RecordCashPurchasePayment;
@@ -19,6 +20,8 @@ use App\Domain\Commerce\Exceptions\PurchaseOrderNotCancellableException;
 use App\Domain\Commerce\Quantity;
 use App\Domain\Identity\CoreIdentityReference;
 use App\Domain\Identity\CurrentActor;
+use App\Models\CashRegister;
+use App\Models\CashSession;
 use App\Models\CommercialAuditEvent;
 use App\Models\CommercialContext;
 use App\Models\CommercialContextMember;
@@ -30,6 +33,7 @@ use App\Models\StockBalance;
 use App\Models\StockMovement;
 use App\Models\Supplier;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\TestCase;
 
@@ -405,7 +409,8 @@ final class PurchasingTest extends TestCase
         $context = $this->context();
         $product = $this->product($context, ['sale_price_xof' => 1500]);
         StockBalance::query()->create(['context_id' => $context->id, 'product_id' => $product->id, 'quantity' => 10]);
-        $actor = $this->actor($context, [CommercialPermission::SELL]);
+        $actor = $this->actor($context, [CommercialPermission::SELL, CommercialPermission::OPERATE_CASH]);
+        $this->openCashSession($context, $actor);
 
         $sale = app(SaleDraftService::class)->findOrCreateDraft($context, $actor->identity);
         app(SaleDraftService::class)->addOrIncrementLine($sale, $product, '2');
@@ -421,7 +426,8 @@ final class PurchasingTest extends TestCase
     private function readyDraftOrder(bool $withProductReturn = false, string $quantity = '3', int $unitCostXof = 1000): array
     {
         $context = $this->context();
-        $actor = $this->actor($context, [CommercialPermission::MANAGE_PURCHASES, CommercialPermission::RECEIVE_PURCHASES, CommercialPermission::PAY_PURCHASES]);
+        $actor = $this->actor($context, [CommercialPermission::MANAGE_PURCHASES, CommercialPermission::RECEIVE_PURCHASES, CommercialPermission::PAY_PURCHASES, CommercialPermission::OPERATE_CASH]);
+        $this->openCashSession($context, $actor, 1_000_000);
         $supplier = $this->supplier($context);
         $product = $this->product($context);
 
@@ -429,6 +435,22 @@ final class PurchasingTest extends TestCase
         app(PurchaseOrderDraftService::class)->addOrUpdateLine($order, $product, $quantity, $unitCostXof);
 
         return $withProductReturn ? [$order->fresh(), $actor, $product] : [$order->fresh(), $actor];
+    }
+
+    /**
+     * Ouvre une vraie session de caisse pour l'acteur (docs/implementation/LOT-003-CASH-REGISTER-
+     * CLOSING.md §36 : interdiction explicite de tout bypass de test pour la caisse).
+     */
+    private function openCashSession(CommercialContext $context, CurrentActor $actor, int $openingAmountXof = 0): CashSession
+    {
+        $register = CashRegister::query()->create([
+            'context_id' => $context->id,
+            'name' => 'Caisse de test',
+            'status' => CashRegister::STATUS_ACTIVE,
+            'created_by_core_reference' => $actor->identity->reference,
+        ]);
+
+        return app(OpenCashSession::class)->handle($register, $actor, $openingAmountXof, (string) Str::uuid());
     }
 
     /**

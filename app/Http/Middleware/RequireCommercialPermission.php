@@ -17,15 +17,23 @@ use Symfony\Component\HttpFoundation\Response;
  */
 final class RequireCommercialPermission
 {
-    public function handle(Request $request, Closure $next, string $permission): Response
+    /**
+     * Plusieurs permissions passées (route::middleware('commercial.permission:A,B')) sont
+     * combinées en OU : l'acteur doit en posséder au moins une. Utile pour une route partagée par
+     * plusieurs rôles (p. ex. le hub Caisse, accessible dès qu'une seule permission caisse est
+     * pertinente).
+     */
+    public function handle(Request $request, Closure $next, string ...$permissions): Response
     {
         /** @var CurrentActor $actor */
         $actor = app(CurrentActor::class);
 
-        if (! $actor->can($permission)) {
-            return response()->view('identity.permission-denied', ['permission' => $permission], 403);
+        foreach ($permissions as $permission) {
+            if ($actor->can($permission)) {
+                return $next($request);
+            }
         }
 
-        return $next($request);
+        return response()->view('identity.permission-denied', ['permission' => $permissions[0] ?? ''], 403);
     }
 }
