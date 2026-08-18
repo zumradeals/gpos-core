@@ -16,18 +16,27 @@ use App\Models\Product;
 use App\Models\Sale;
 use App\Models\SaleLine;
 use Illuminate\Support\Str;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 /**
  * Le parcours vente — benchmark UX du produit (docs/implementation/LOT-001-APP-SHELL-COMMERCE-
  * SLICE.md §18) : rechercher, ajouter, ajuster, encaisser, reçu, en quelques gestes.
+ *
+ * saleId/idempotencyKey sont #[Locked] (aucune mise à jour cliente possible), mais ce n'est pas
+ * la seule frontière : sale() revalide systématiquement que la vente appartient au contexte
+ * commercial ACTUELLEMENT actif de l'acteur (qui peut avoir changé depuis mount(), p. ex. bascule
+ * de contexte dans un autre onglet) — échec fermé sinon. SaleDraftService/ConfirmCashSale
+ * protègent en plus leurs propres invariants indépendamment de ce composant.
  */
 final class Sell extends Component
 {
     public string $search = '';
 
+    #[Locked]
     public string $saleId;
 
+    #[Locked]
     public string $idempotencyKey;
 
     public ?string $errorMessage = null;
@@ -51,19 +60,22 @@ final class Sell extends Component
 
     public function incrementLine(string $lineId): void
     {
-        $line = $this->line($lineId);
-        app(SaleDraftService::class)->setQuantity($this->sale(), $line, Quantity::add((string) $line->quantity, '1'));
+        $sale = $this->sale();
+        $line = $this->line($sale, $lineId);
+        app(SaleDraftService::class)->setQuantity($sale, $line, Quantity::add((string) $line->quantity, '1'));
     }
 
     public function decrementLine(string $lineId): void
     {
-        $line = $this->line($lineId);
-        app(SaleDraftService::class)->setQuantity($this->sale(), $line, Quantity::subtract((string) $line->quantity, '1'));
+        $sale = $this->sale();
+        $line = $this->line($sale, $lineId);
+        app(SaleDraftService::class)->setQuantity($sale, $line, Quantity::subtract((string) $line->quantity, '1'));
     }
 
     public function removeLine(string $lineId): void
     {
-        app(SaleDraftService::class)->removeLine($this->sale(), $this->line($lineId));
+        $sale = $this->sale();
+        app(SaleDraftService::class)->removeLine($sale, $this->line($sale, $lineId));
     }
 
     public function confirmCash()
@@ -115,13 +127,23 @@ final class Sell extends Component
         return app(CurrentActor::class);
     }
 
+    /**
+     * Frontière de sécurité réelle : #[Locked] empêche une mise à jour cliente de saleId, mais ne
+     * garantit pas à elle seule que la vente reste dans le contexte actif de l'acteur (qui peut
+     * changer entre deux requêtes). Échec fermé (404) en cas de désaccord.
+     */
     private function sale(): Sale
     {
-        return Sale::query()->findOrFail($this->saleId);
+        $actor = $this->actor();
+        $sale = Sale::query()->findOrFail($this->saleId);
+
+        abort_unless($actor->hasActiveContext() && $sale->context_id === $actor->activeContext()->id, 404);
+
+        return $sale;
     }
 
-    private function line(string $lineId): SaleLine
+    private function line(Sale $sale, string $lineId): SaleLine
     {
-        return SaleLine::query()->where('sale_id', $this->saleId)->findOrFail($lineId);
+        return SaleLine::query()->where('sale_id', $sale->id)->findOrFail($lineId);
     }
 }
