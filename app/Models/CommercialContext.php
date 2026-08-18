@@ -43,4 +43,14 @@ final class CommercialContext extends Model
     {
         return $this->hasMany(Sale::class, 'context_id');
     }
+
+    public function suppliers(): HasMany
+    {
+        return $this->hasMany(Supplier::class, 'context_id');
+    }
+
+    public function purchaseOrders(): HasMany
+    {
+        return $this->hasMany(PurchaseOrder::class, 'context_id');
+    }
 }

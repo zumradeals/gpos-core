@@ -31,6 +31,7 @@ final class ProductCatalog
                 'track_stock' => $data['kind'] === Product::KIND_SERVICE ? false : ($data['track_stock'] ?? true),
                 'active' => true,
                 'unit_label' => $data['unit_label'] ?? 'unité',
+                'reorder_threshold' => ($data['kind'] ?? Product::KIND_PRODUCT) === Product::KIND_SERVICE ? null : ($data['reorder_threshold'] ?? null),
             ]);
 
             if ($product->track_stock) {

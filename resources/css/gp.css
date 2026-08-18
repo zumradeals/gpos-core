@@ -117,13 +117,17 @@
     padding: 12px 20px; min-height: var(--gp-touch-min); border-radius: var(--gp-radius-control);
     border: 1px solid transparent; font-family: inherit; font-size: 15px; font-weight: 600;
     cursor: pointer; text-align: center; line-height: 1.2; }
-.gp-btn--primary { background: var(--gp-copper); color: var(--gp-ivory); }
-.gp-btn--primary:hover { background: var(--gp-copper-deep); color: var(--gp-ivory); }
+/* Le sélecteur "a.gp-btn--X" (même spécificité que ".gp a", mais déclaré après dans la feuille)
+   garantit qu'un <a class="gp-btn gp-btn--primary"> (lien stylé comme bouton principal, p. ex.
+   "Nouvel achat"/"Réceptionner") n'hérite jamais silencieusement du cuivre par défaut de ".gp a"
+   — sinon texte cuivre sur fond cuivre, invisible. */
+.gp-btn--primary, a.gp-btn--primary { background: var(--gp-copper); color: var(--gp-ivory); }
+.gp-btn--primary:hover, a.gp-btn--primary:hover { background: var(--gp-copper-deep); color: var(--gp-ivory); }
 .gp-btn--primary:disabled { background: var(--gp-line-dashed); color: var(--gp-faint); cursor: not-allowed; }
-.gp-btn--quiet { border-color: var(--gp-line); color: var(--gp-text); background: var(--gp-card); }
-.gp-btn--quiet:hover { color: var(--gp-copper); }
-.gp-btn--on-deep { border-color: rgba(255, 253, 247, .3); color: var(--gp-on-deep-title); background: transparent; }
-.gp-btn--danger { background: var(--gp-error); color: #fff; }
+.gp-btn--quiet, a.gp-btn--quiet { border-color: var(--gp-line); color: var(--gp-text); background: var(--gp-card); }
+.gp-btn--quiet:hover, a.gp-btn--quiet:hover { color: var(--gp-copper); }
+.gp-btn--on-deep, a.gp-btn--on-deep { border-color: rgba(255, 253, 247, .3); color: var(--gp-on-deep-title); background: transparent; }
+.gp-btn--danger, a.gp-btn--danger { background: var(--gp-error); color: #fff; }
 .gp-btn--sm { padding: 8px 14px; min-height: 38px; font-size: 13px; }
 .gp-btn--block { width: 100%; }
 
@@ -174,7 +178,7 @@
     font-size: 13px; font-weight: 600; background: transparent; cursor: pointer; }
 .gp-tools-menu summary::-webkit-details-marker { display: none; }
 
-.gp-tabbar { display: grid; grid-template-columns: repeat(5, 1fr); align-items: end; gap: 2px;
+.gp-tabbar { display: grid; align-items: end; gap: 2px;
     padding: 8px 8px calc(env(safe-area-inset-bottom, 0px) + 10px); background: var(--gp-card);
     border-top: 1px solid var(--gp-line); position: sticky; bottom: 0; }
 .gp-tabbar a { display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -182,7 +186,7 @@
 .gp-tabbar a[aria-current] { color: var(--gp-copper); font-weight: 600; }
 .gp-tabbar__icon { width: 22px; height: 22px; border-radius: 7px; background: var(--gp-sand); }
 .gp-tabbar a[aria-current] .gp-tabbar__icon { background: var(--gp-copper); }
-.gp-tabbar__sell { grid-column: 2; margin-top: -22px; }
+.gp-tabbar__sell { margin-top: -22px; }
 .gp-tabbar__sell .gp-tabbar__icon { width: 48px; height: 48px; border-radius: 16px; background: var(--gp-copper);
     display: grid; place-items: center; color: var(--gp-ivory); font-size: 20px; box-shadow: 0 8px 18px rgba(169, 85, 43, .35); }
 

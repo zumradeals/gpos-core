@@ -19,7 +19,7 @@ final class Payment extends Model
     protected $table = 'payments';
 
     protected $fillable = [
-        'context_id', 'sale_id', 'method', 'amount_xof', 'status',
+        'context_id', 'sale_id', 'purchase_order_id', 'method', 'amount_xof', 'status',
         'actor_core_reference', 'paid_at', 'idempotency_key',
     ];
 
@@ -31,5 +31,10 @@ final class Payment extends Model
     public function sale(): BelongsTo
     {
         return $this->belongsTo(Sale::class, 'sale_id');
+    }
+
+    public function purchaseOrder(): BelongsTo
+    {
+        return $this->belongsTo(PurchaseOrder::class, 'purchase_order_id');
     }
 }

@@ -31,6 +31,9 @@
             @if($canSell)
                 <a href="{{ route('sell.show') }}" class="gp-action-card"><strong>Vendre</strong><span class="gp-hint">Ouvrir le parcours de vente</span></a>
             @endif
+            @if($canManagePurchases)
+                <a href="{{ route('purchases.create') }}" class="gp-action-card"><strong>Nouvel achat</strong><span class="gp-hint">Commander auprès d'un fournisseur</span></a>
+            @endif
             <a href="{{ route('products.index') }}" class="gp-action-card"><strong>Ajouter un produit</strong><span class="gp-hint">Compléter le catalogue</span></a>
             @if($canViewStock)
                 <a href="{{ route('stock.index') }}" class="gp-action-card"><strong>Stock</strong><span class="gp-hint">Voir les soldes courants</span></a>

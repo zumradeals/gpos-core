@@ -28,6 +28,7 @@
                             <option value="SERVICE" @selected(old('kind') === 'SERVICE')>Service (sans stock)</option>
                         </select>
                     </label>
+                    <label class="gp-field"><span>Seuil de réassort (facultatif)</span><input type="number" name="reorder_threshold" step="0.001" min="0" value="{{ old('reorder_threshold') }}"></label>
                 </div>
                 <button type="submit" class="gp-btn gp-btn--primary" style="align-self:flex-start">Ajouter au catalogue</button>
             </form>

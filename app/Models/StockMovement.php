@@ -21,8 +21,8 @@ final class StockMovement extends Model
     protected $table = 'stock_movements';
 
     protected $fillable = [
-        'context_id', 'product_id', 'sale_line_id', 'direction', 'quantity',
-        'reason', 'source_type', 'source_reference', 'actor_core_reference',
+        'context_id', 'product_id', 'sale_line_id', 'purchase_receipt_line_id', 'direction',
+        'quantity', 'reason', 'source_type', 'source_reference', 'actor_core_reference',
         'occurred_at', 'idempotency_key',
     ];
 
@@ -39,5 +39,10 @@ final class StockMovement extends Model
     public function saleLine(): BelongsTo
     {
         return $this->belongsTo(SaleLine::class, 'sale_line_id');
+    }
+
+    public function purchaseReceiptLine(): BelongsTo
+    {
+        return $this->belongsTo(PurchaseReceiptLine::class, 'purchase_receipt_line_id');
     }
 }
