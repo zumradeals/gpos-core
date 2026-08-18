@@ -15,7 +15,7 @@
         <div class="gp-card" style="padding:0;overflow:hidden">
             @foreach($products as $product)
                 @php($quantity = (float) optional($product->stockBalance)->quantity)
-                @php($lowStock = $product->reorder_threshold !== null && $quantity <= (float) $product->reorder_threshold)
+                @php($lowStock = $product->reorder_threshold !== null && $product->stockBalance !== null && \App\Domain\Commerce\Quantity::compare((string) $product->stockBalance->quantity, (string) $product->reorder_threshold) <= 0)
                 <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 20px;border-bottom:1px solid var(--gp-line-inner);flex-wrap:wrap">
                     <strong style="font-size:14px;color:var(--gp-ink)">{{ $product->name }}</strong>
                     <span class="gp-status-pill {{ $quantity > 0 ? 'gp-status-pill--active' : 'gp-status-pill--suspended' }} gp-tabular">

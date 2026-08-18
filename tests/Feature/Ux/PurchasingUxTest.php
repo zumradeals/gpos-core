@@ -140,6 +140,37 @@ final class PurchasingUxTest extends TestCase
         $this->signIn('IDN-BUYER')->get('/acheter/commandes/'.$order->id)->assertOk()->assertSee('Payé comptant');
     }
 
+    public function test_the_unit_cost_field_rejects_anything_but_a_strict_positive_integer(): void
+    {
+        $context = $this->context();
+        $actor = $this->currentActor($context, 'IDN-COST-GUARD', [CommercialPermission::MANAGE_PURCHASES]);
+        $supplier = $this->supplier($context);
+        $product = $this->product($context);
+        $order = app(PurchaseOrderDraftService::class)->createDraft($context, $actor->identity, $supplier);
+
+        foreach (['-500', '12.50', 'abc900', '', '  '] as $invalidCost) {
+            $component = Livewire::test(PurchaseOrderBuilder::class, ['purchaseOrderId' => (string) $order->id])
+                ->call('selectProduct', (string) $product->id)
+                ->set('quantity', '1')
+                ->set('unitCostXof', $invalidCost)
+                ->call('addLine');
+
+            $component->assertSet('errorMessage', fn ($message) => is_string($message) && $message !== '');
+            self::assertSame(0, $order->fresh()->lines()->count(), "« {$invalidCost} » n'aurait dû créer aucune ligne.");
+        }
+
+        Livewire::test(PurchaseOrderBuilder::class, ['purchaseOrderId' => (string) $order->id])
+            ->call('selectProduct', (string) $product->id)
+            ->set('quantity', '1')
+            ->set('unitCostXof', '2500')
+            ->call('addLine')
+            ->assertSet('errorMessage', null);
+
+        $line = $order->fresh()->lines()->sole();
+        self::assertIsInt($line->unit_cost_xof);
+        self::assertSame(2500, $line->unit_cost_xof);
+    }
+
     public function test_over_receipt_produces_a_readable_error(): void
     {
         $context = $this->context();

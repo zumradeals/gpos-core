@@ -201,6 +201,77 @@ final class PurchasingTest extends TestCase
         self::assertSame('6.000', (string) StockBalance::query()->where('product_id', $product->id)->sole()->quantity);
     }
 
+    public function test_the_same_idempotency_key_reused_on_a_different_order_in_the_same_context_is_refused(): void
+    {
+        $context = $this->context();
+        $actor = $this->actor($context, [CommercialPermission::MANAGE_PURCHASES, CommercialPermission::RECEIVE_PURCHASES]);
+        $supplier = $this->supplier($context);
+
+        $productA = $this->product($context, ['name' => 'Produit A']);
+        $orderA = app(PurchaseOrderDraftService::class)->createDraft($context, $actor->identity, $supplier);
+        app(PurchaseOrderDraftService::class)->addOrUpdateLine($orderA, $productA, '5', 1000);
+        $confirmedA = app(ConfirmPurchaseOrder::class)->handle($orderA, $actor, 'idem-order-a')->purchaseOrder;
+        $lineA = $confirmedA->lines()->sole();
+
+        $productB = $this->product($context, ['name' => 'Produit B']);
+        $orderB = app(PurchaseOrderDraftService::class)->createDraft($context, $actor->identity, $supplier);
+        app(PurchaseOrderDraftService::class)->addOrUpdateLine($orderB, $productB, '5', 1000);
+        $confirmedB = app(ConfirmPurchaseOrder::class)->handle($orderB, $actor, 'idem-order-b')->purchaseOrder;
+        $lineB = $confirmedB->lines()->sole();
+
+        $sharedKey = 'idem-shared-key';
+        app(ReceivePurchaseOrder::class)->handle($confirmedA, $actor, [$lineA->id => '5'], $sharedKey);
+
+        $this->expectException(HttpException::class);
+
+        try {
+            app(ReceivePurchaseOrder::class)->handle($confirmedB->fresh(), $actor, [$lineB->id => '5'], $sharedKey);
+        } finally {
+            self::assertSame(0, StockMovement::query()->where('product_id', $productB->id)->count());
+            self::assertSame(PurchaseOrder::STATUS_ORDERED, $confirmedB->fresh()->status);
+        }
+    }
+
+    public function test_the_same_idempotency_key_reused_across_contexts_is_refused_and_returns_nothing_foreign(): void
+    {
+        $contextA = $this->context();
+        $contextB = $this->context();
+
+        $actorA = $this->actor($contextA, [CommercialPermission::MANAGE_PURCHASES, CommercialPermission::RECEIVE_PURCHASES]);
+        $supplierA = $this->supplier($contextA);
+        $productA = $this->product($contextA);
+        $orderA = app(PurchaseOrderDraftService::class)->createDraft($contextA, $actorA->identity, $supplierA);
+        app(PurchaseOrderDraftService::class)->addOrUpdateLine($orderA, $productA, '5', 1000);
+        $confirmedA = app(ConfirmPurchaseOrder::class)->handle($orderA, $actorA, 'idem-context-a')->purchaseOrder;
+        $lineA = $confirmedA->lines()->sole();
+
+        $actorB = $this->actor($contextB, [CommercialPermission::MANAGE_PURCHASES, CommercialPermission::RECEIVE_PURCHASES]);
+        $supplierB = $this->supplier($contextB);
+        $productB = $this->product($contextB);
+        $orderB = app(PurchaseOrderDraftService::class)->createDraft($contextB, $actorB->identity, $supplierB);
+        app(PurchaseOrderDraftService::class)->addOrUpdateLine($orderB, $productB, '5', 1000);
+        $confirmedB = app(ConfirmPurchaseOrder::class)->handle($orderB, $actorB, 'idem-context-b')->purchaseOrder;
+        $lineB = $confirmedB->lines()->sole();
+
+        $sharedKey = 'idem-cross-context-key';
+        $resultA = app(ReceivePurchaseOrder::class)->handle($confirmedA, $actorA, [$lineA->id => '5'], $sharedKey);
+
+        $caught = null;
+
+        try {
+            app(ReceivePurchaseOrder::class)->handle($confirmedB->fresh(), $actorB, [$lineB->id => '5'], $sharedKey);
+        } catch (HttpException $e) {
+            $caught = $e;
+        }
+
+        self::assertNotNull($caught, 'La réutilisation de la clé à travers deux contextes doit être refusée.');
+        self::assertSame(0, StockMovement::query()->where('product_id', $productB->id)->count());
+        self::assertSame(PurchaseOrder::STATUS_ORDERED, $confirmedB->fresh()->status);
+        // Le contexte A n'a lui-même jamais été affecté par la tentative refusée sur B.
+        self::assertSame($resultA->purchaseReceipt->id, $confirmedA->receipts()->sole()->id);
+        self::assertSame(1, $confirmedA->receipts()->count());
+    }
+
     public function test_two_concurrent_receipts_never_exceed_the_ordered_quantity(): void
     {
         [$order, $actor, $product] = $this->readyOrderedOrder(withProductReturn: true, orderedQuantity: '10');
@@ -322,7 +393,10 @@ final class PurchasingTest extends TestCase
         $product = $this->product($context, ['reorder_threshold' => '5.000']);
         StockBalance::query()->create(['context_id' => $context->id, 'product_id' => $product->id, 'quantity' => '3.000']);
 
-        self::assertTrue((float) $product->stockBalance->quantity <= (float) $product->reorder_threshold);
+        self::assertLessThanOrEqual(
+            0,
+            Quantity::compare((string) $product->stockBalance->quantity, (string) $product->reorder_threshold),
+        );
         self::assertSame(0, PurchaseOrder::query()->count());
     }
 

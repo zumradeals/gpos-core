@@ -78,13 +78,19 @@ final class PurchaseOrderBuilder extends Component
             return;
         }
 
+        // Coût unitaire = entier XOF strict, jamais une conversion flottante ni une extraction
+        // silencieuse de chiffres (docs/G-POS-DOCTRINE.md — « Montants monétaires : entiers,
+        // jamais float »). Une entrée invalide ne crée/modifie jamais de ligne.
+        $trimmedCost = trim($this->unitCostXof);
+        if (! preg_match('/^\d+$/', $trimmedCost)) {
+            $this->errorMessage = 'Le coût unitaire doit être un nombre entier positif (ex. 2500).';
+
+            return;
+        }
+
         $product = Product::query()->where('context_id', $order->context_id)->findOrFail($this->selectedProductId);
 
-        // Coût unitaire = entrée entière brute, jamais une conversion flottante (docs/G-POS-
-        // DOCTRINE.md — « Montants monétaires : entiers, jamais float »).
-        $unitCostXof = (int) preg_replace('/\D/', '', $this->unitCostXof);
-
-        app(PurchaseOrderDraftService::class)->addOrUpdateLine($order, $product, $this->quantity, $unitCostXof);
+        app(PurchaseOrderDraftService::class)->addOrUpdateLine($order, $product, $this->quantity, (int) $trimmedCost);
 
         $this->selectedProductId = '';
         $this->quantity = '1';

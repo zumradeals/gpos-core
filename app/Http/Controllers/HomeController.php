@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Domain\Commerce\CommercialPermission;
+use App\Domain\Commerce\Quantity;
 use App\Domain\Identity\CurrentActor;
 use App\Models\Product;
 use App\Models\PurchaseOrder;
@@ -91,7 +92,7 @@ final class HomeController extends Controller
                 ->with('stockBalance')
                 ->get()
                 ->filter(fn (Product $product) => $product->stockBalance !== null
-                    && (float) $product->stockBalance->quantity <= (float) $product->reorder_threshold)
+                    && Quantity::compare((string) $product->stockBalance->quantity, (string) $product->reorder_threshold) <= 0)
                 ->count();
 
             if ($lowStockCount > 0) {

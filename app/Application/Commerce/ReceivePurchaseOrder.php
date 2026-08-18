@@ -43,8 +43,17 @@ final class ReceivePurchaseOrder
         abort_unless($actor->can(CommercialPermission::RECEIVE_PURCHASES), 403, 'Permission RECEIVE_PURCHASES requise pour réceptionner.');
 
         return DB::transaction(function () use ($order, $actor, $receivedQuantities, $idempotencyKey): ReceivePurchaseOrderResult {
+            // Un retry valide exige la MÊME clé pour la MÊME commande dans le MÊME contexte — une
+            // clé qui correspond à une autre commande (même contexte, ou pire, un autre contexte)
+            // échoue fermé plutôt que de renvoyer un reçu/document étranger à l'appelant.
             $existingReceipt = PurchaseReceipt::query()->where('idempotency_key', $idempotencyKey)->first();
             if ($existingReceipt !== null) {
+                abort_if(
+                    $existingReceipt->purchase_order_id !== $order->id || $existingReceipt->context_id !== $order->context_id,
+                    409,
+                    'Cette clé d’idempotence est déjà utilisée par une autre commande.',
+                );
+
                 return $this->existingResult($existingReceipt);
             }
 
