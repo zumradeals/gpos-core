@@ -8,6 +8,7 @@ use App\Application\Commerce\ProductCatalog;
 use App\Application\Commerce\StockAdjuster;
 use App\Domain\Commerce\CommercialPermission;
 use App\Domain\Identity\CoreIdentityReference;
+use App\Models\CashRegister;
 use App\Models\CommercialContext;
 use App\Models\CommercialContextMember;
 use App\Models\Product;
@@ -72,6 +73,14 @@ final class DevBootstrapSeeder extends Seeder
                 'name' => 'Réparation à domicile', 'sale_price_xof' => 3000, 'kind' => Product::KIND_SERVICE, 'unit_label' => 'intervention',
             ]);
         }
+
+        // docs/implementation/LOT-003-CASH-REGISTER-CLOSING.md §34 : une caisse de démonstration
+        // réelle simplifie le smoke test, jamais créée silencieusement en production (double
+        // verrou déjà appliqué en tête de méthode).
+        CashRegister::query()->firstOrCreate(
+            ['context_id' => $context->id, 'name' => 'Caisse principale'],
+            ['status' => CashRegister::STATUS_ACTIVE, 'created_by_core_reference' => $reference],
+        );
 
         $this->command?->info("Contexte « {$context->display_name} » prêt pour {$reference}.");
     }

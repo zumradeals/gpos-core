@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace Tests\Feature\Commerce;
 
 use App\Application\Commerce\ConfirmCashSale;
+use App\Application\Commerce\OpenCashSession;
 use App\Application\Commerce\SaleDraftService;
 use App\Domain\Commerce\CommercialPermission;
 use App\Domain\Identity\CoreIdentityReference;
 use App\Domain\Identity\CurrentActor;
 use App\Livewire\Sell;
+use App\Models\CashRegister;
 use App\Models\CommercialContext;
 use App\Models\CommercialContextMember;
 use App\Models\Product;
@@ -73,7 +75,8 @@ final class SaleDraftIsolationTest extends TestCase
     public function test_a_confirmed_sale_refuses_every_draft_mutation(): void
     {
         $context = $this->context();
-        $actor = $this->actor($context, 'IDN-D', [CommercialPermission::SELL]);
+        $actor = $this->actor($context, 'IDN-D', [CommercialPermission::SELL, CommercialPermission::OPERATE_CASH]);
+        $this->openCashSession($context, $actor);
         $product = $this->product($context, ['sale_price_xof' => 1000]);
         StockBalance::query()->create(['context_id' => $context->id, 'product_id' => $product->id, 'quantity' => 10]);
 
@@ -181,5 +184,21 @@ final class SaleDraftIsolationTest extends TestCase
         app()->instance(CurrentActor::class, $actor);
 
         return $actor;
+    }
+
+    /**
+     * Ouvre une vraie session de caisse pour l'acteur (docs/implementation/LOT-003-CASH-REGISTER-
+     * CLOSING.md §36 : interdiction explicite de tout bypass de test pour la caisse).
+     */
+    private function openCashSession(CommercialContext $context, CurrentActor $actor): void
+    {
+        $register = CashRegister::query()->create([
+            'context_id' => $context->id,
+            'name' => 'Caisse de test',
+            'status' => CashRegister::STATUS_ACTIVE,
+            'created_by_core_reference' => $actor->identity->reference,
+        ]);
+
+        app(OpenCashSession::class)->handle($register, $actor, 0, (string) Str::uuid());
     }
 }

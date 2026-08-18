@@ -10,6 +10,8 @@ use App\Domain\Commerce\Exceptions\InsufficientStockException;
 use App\Domain\Commerce\Exceptions\SaleNotConfirmableException;
 use App\Domain\Commerce\Quantity;
 use App\Domain\Identity\CurrentActor;
+use App\Models\CashMovement;
+use App\Models\CashSession;
 use App\Models\CommercialContext;
 use App\Models\CommercialContextSequence;
 use App\Models\CommercialDocument;
@@ -24,12 +26,20 @@ use Illuminate\Support\Facades\DB;
  * COMMERCE-SLICE.md §15). Verrou de ligne sur la vente puis sur les soldes de stock concernés,
  * dans cet ordre, sur toute exécution — évite les inter-blocages entre confirmations concurrentes
  * portant sur des ventes différentes mais des produits partagés.
+ *
+ * Modification bornée LOT-003 (docs/implementation/LOT-003-CASH-REGISTER-CLOSING.md §13.1) : dans
+ * la même transaction, une vente CASH d'un montant réel exige désormais une session de caisse
+ * ouverte pour l'acteur et produit exactement un CashMovement SALE_PAYMENT lié au Payment — sinon
+ * rollback complet, la vente ne devient jamais CONFIRMED. Une vente à 0 XOF (aucune espèce
+ * échangée) ne touche pas la caisse.
  */
 final class ConfirmCashSale
 {
     public function __construct(
         private readonly SequenceGenerator $sequences,
         private readonly AuditLogger $audit,
+        private readonly CashSessionResolver $cashSessionResolver,
+        private readonly CashLedger $cashLedger,
     ) {}
 
     public function handle(Sale $sale, CurrentActor $actor, string $idempotencyKey): ConfirmSaleResult
@@ -133,6 +143,34 @@ final class ConfirmCashSale
                 'paid_at' => now(),
                 'idempotency_key' => 'SALE_PAYMENT:'.$locked->id,
             ]);
+
+            // Une vente à 0 XOF n'échange aucune espèce : la caisse n'est pas concernée. Sinon,
+            // aucun paiement CASH ne peut être confirmé sans session ouverte et autorisée — la
+            // vente entière échoue/rollback si l'écriture caisse échoue (§13.1).
+            if ($total > 0) {
+                abort_unless($actor->can(CommercialPermission::OPERATE_CASH), 403, 'Permission OPERATE_CASH requise pour encaisser en espèces.');
+
+                $openSession = $this->cashSessionResolver->requireOpenSessionForActor($context, $actor->identity);
+
+                /** @var CashSession $lockedSession */
+                $lockedSession = CashSession::query()->whereKey($openSession->id)->lockForUpdate()->firstOrFail();
+
+                $this->cashLedger->record(
+                    $lockedSession,
+                    CashMovement::TYPE_SALE_PAYMENT,
+                    CashMovement::DIRECTION_IN,
+                    $total,
+                    $actor->identity,
+                    'SALE_PAYMENT_CASH_MOVEMENT:'.$payment->id,
+                    paymentId: (string) $payment->id,
+                    sourceType: 'SALE',
+                    sourceReference: (string) $locked->id,
+                );
+
+                $this->audit->record($context, $actor->identity, 'cash.payment_linked', 'Payment', (string) $payment->id, null, [
+                    'cash_session_id' => (string) $lockedSession->id, 'amount_xof' => $total,
+                ], requestReference: $idempotencyKey);
+            }
 
             $document = CommercialDocument::query()->create([
                 'context_id' => $context->id,

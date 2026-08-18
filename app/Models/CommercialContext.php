@@ -53,4 +53,9 @@ final class CommercialContext extends Model
     {
         return $this->hasMany(PurchaseOrder::class, 'context_id');
     }
+
+    public function cashRegisters(): HasMany
+    {
+        return $this->hasMany(CashRegister::class, 'context_id');
+    }
 }

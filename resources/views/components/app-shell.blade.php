@@ -9,6 +9,7 @@
         ['route' => 'home', 'label' => 'Accueil', 'visible' => true],
         ['route' => 'sell.show', 'label' => 'Vendre', 'visible' => $currentActor?->can(\App\Domain\Commerce\CommercialPermission::SELL)],
         ['route' => 'purchases.hub', 'label' => 'Acheter', 'visible' => $currentActor?->can(\App\Domain\Commerce\CommercialPermission::VIEW_PURCHASES) || $currentActor?->can(\App\Domain\Commerce\CommercialPermission::MANAGE_PURCHASES)],
+        ['route' => 'cash.hub', 'label' => 'Caisse', 'visible' => $currentActor?->can(\App\Domain\Commerce\CommercialPermission::VIEW_CASH) || $currentActor?->can(\App\Domain\Commerce\CommercialPermission::OPERATE_CASH) || $currentActor?->can(\App\Domain\Commerce\CommercialPermission::CLOSE_CASH) || $currentActor?->can(\App\Domain\Commerce\CommercialPermission::MANAGE_CASH)],
         ['route' => 'products.index', 'label' => 'Produits', 'visible' => true],
         ['route' => 'stock.index', 'label' => 'Stock', 'visible' => $currentActor?->can(\App\Domain\Commerce\CommercialPermission::VIEW_STOCK)],
         ['route' => 'documents.index', 'label' => 'Documents', 'visible' => $currentActor?->can(\App\Domain\Commerce\CommercialPermission::VIEW_DOCUMENTS)],

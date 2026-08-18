@@ -182,7 +182,12 @@
     padding: 8px 8px calc(env(safe-area-inset-bottom, 0px) + 10px); background: var(--gp-card);
     border-top: 1px solid var(--gp-line); position: sticky; bottom: 0; }
 .gp-tabbar a { display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: 5px; min-height: var(--gp-touch-min); font-size: 11px; color: var(--gp-faint); }
+    gap: 5px; min-height: var(--gp-touch-min); font-size: 11px; color: var(--gp-faint);
+    text-align: center; line-height: 1.15; padding: 0 2px; }
+@media (max-width: 420px) {
+    .gp-tabbar a { font-size: 10px; gap: 4px; }
+    .gp-tabbar__icon { width: 20px; height: 20px; }
+}
 .gp-tabbar a[aria-current] { color: var(--gp-copper); font-weight: 600; }
 .gp-tabbar__icon { width: 22px; height: 22px; border-radius: 7px; background: var(--gp-sand); }
 .gp-tabbar a[aria-current] .gp-tabbar__icon { background: var(--gp-copper); }

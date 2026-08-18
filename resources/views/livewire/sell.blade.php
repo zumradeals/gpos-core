@@ -26,7 +26,12 @@
         <div class="gp-label">Panier</div>
 
         @if($errorMessage)
-            <div style="padding:12px 14px;border-radius:12px;background:var(--gp-tint-error);color:var(--gp-error);font-size:13px;line-height:1.5">{{ $errorMessage }}</div>
+            <div style="padding:12px 14px;border-radius:12px;background:var(--gp-tint-error);color:var(--gp-error);font-size:13px;line-height:1.5">
+                {{ $errorMessage }}
+                @if($cashRegisterClosed)
+                    <a href="{{ route('cash.hub') }}" style="display:inline-block;margin-top:6px;font-weight:600;color:var(--gp-error)">Ouvrir ma caisse →</a>
+                @endif
+            </div>
         @endif
 
         @if($lines->isEmpty())

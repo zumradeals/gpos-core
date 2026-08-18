@@ -30,13 +30,22 @@ final class CommercialPermission
 
     public const PAY_PURCHASES = 'PAY_PURCHASES';
 
+    public const VIEW_CASH = 'VIEW_CASH';
+
+    public const OPERATE_CASH = 'OPERATE_CASH';
+
+    public const CLOSE_CASH = 'CLOSE_CASH';
+
+    public const MANAGE_CASH = 'MANAGE_CASH';
+
     /** @return list<string> */
     public static function all(): array
     {
         return [
             self::SELL, self::MANAGE_CATALOG, self::VIEW_STOCK, self::ADJUST_STOCK,
             self::VIEW_DOCUMENTS, self::VIEW_AUDIT, self::VIEW_PURCHASES, self::MANAGE_PURCHASES,
-            self::RECEIVE_PURCHASES, self::PAY_PURCHASES,
+            self::RECEIVE_PURCHASES, self::PAY_PURCHASES, self::VIEW_CASH, self::OPERATE_CASH,
+            self::CLOSE_CASH, self::MANAGE_CASH,
         ];
     }
 }

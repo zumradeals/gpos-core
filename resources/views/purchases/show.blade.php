@@ -16,7 +16,12 @@
         <div style="padding:12px 16px;border-radius:12px;background:var(--gp-tint-forest);color:var(--gp-forest);font-size:14px">{{ session('status') }}</div>
     @endif
     @if(session('error'))
-        <div style="padding:12px 16px;border-radius:12px;background:var(--gp-tint-error);color:var(--gp-error);font-size:14px">{{ session('error') }}</div>
+        <div style="padding:12px 16px;border-radius:12px;background:var(--gp-tint-error);color:var(--gp-error);font-size:14px">
+            {{ session('error') }}
+            @if(session('cashRegisterClosed'))
+                <a href="{{ route('cash.hub') }}" style="display:inline-block;margin-top:6px;font-weight:600;color:var(--gp-error)">Ouvrir ma caisse →</a>
+            @endif
+        </div>
     @endif
 
     <div class="gp-card" style="padding:0;overflow:hidden">
