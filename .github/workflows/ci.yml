@@ -58,9 +58,6 @@ jobs:
       - name: Run migrations
         run: php artisan migrate --force
 
-      - name: Run tests
-        run: php artisan test
-
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -71,3 +68,6 @@ jobs:
 
       - name: Build frontend assets
         run: npm run build
+
+      - name: Run tests
+        run: php artisan test
