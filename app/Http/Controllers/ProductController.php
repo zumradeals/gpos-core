@@ -53,6 +53,7 @@ final class ProductController extends Controller
             'sku' => ['nullable', 'string', 'max:60'],
             'barcode' => ['nullable', 'string', 'max:60'],
             'track_stock' => ['nullable', 'boolean'],
+            'reorder_threshold' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         $product = $catalog->create($actor->activeContext(), $actor->identity, $data);

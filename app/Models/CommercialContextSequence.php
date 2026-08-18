@@ -15,6 +15,10 @@ final class CommercialContextSequence extends Model
 
     public const RECEIPT = 'RECEIPT';
 
+    public const PURCHASE_ORDER = 'PURCHASE_ORDER';
+
+    public const GOODS_RECEIPT = 'GOODS_RECEIPT';
+
     protected $table = 'commercial_context_sequences';
 
     protected $fillable = ['context_id', 'sequence_type', 'last_value'];

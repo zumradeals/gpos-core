@@ -22,9 +22,21 @@ final class CommercialPermission
 
     public const VIEW_AUDIT = 'VIEW_AUDIT';
 
+    public const VIEW_PURCHASES = 'VIEW_PURCHASES';
+
+    public const MANAGE_PURCHASES = 'MANAGE_PURCHASES';
+
+    public const RECEIVE_PURCHASES = 'RECEIVE_PURCHASES';
+
+    public const PAY_PURCHASES = 'PAY_PURCHASES';
+
     /** @return list<string> */
     public static function all(): array
     {
-        return [self::SELL, self::MANAGE_CATALOG, self::VIEW_STOCK, self::ADJUST_STOCK, self::VIEW_DOCUMENTS, self::VIEW_AUDIT];
+        return [
+            self::SELL, self::MANAGE_CATALOG, self::VIEW_STOCK, self::ADJUST_STOCK,
+            self::VIEW_DOCUMENTS, self::VIEW_AUDIT, self::VIEW_PURCHASES, self::MANAGE_PURCHASES,
+            self::RECEIVE_PURCHASES, self::PAY_PURCHASES,
+        ];
     }
 }

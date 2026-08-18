@@ -37,6 +37,7 @@ final class StockController extends Controller
         return view('stock.index', [
             'products' => $products,
             'canAdjustStock' => $actor->can(CommercialPermission::ADJUST_STOCK),
+            'canPreparePurchase' => $actor->can(CommercialPermission::MANAGE_PURCHASES),
         ]);
     }
 

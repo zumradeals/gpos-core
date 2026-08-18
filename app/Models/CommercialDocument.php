@@ -18,11 +18,15 @@ final class CommercialDocument extends Model
 
     public const TYPE_RECEIPT = 'RECEIPT';
 
+    public const TYPE_PURCHASE_ORDER = 'PURCHASE_ORDER';
+
+    public const TYPE_GOODS_RECEIPT = 'GOODS_RECEIPT';
+
     protected $table = 'commercial_documents';
 
     protected $fillable = [
-        'context_id', 'sale_id', 'document_type', 'number', 'snapshot',
-        'issued_at', 'issued_by_core_reference',
+        'context_id', 'sale_id', 'purchase_order_id', 'purchase_receipt_id', 'document_type',
+        'number', 'snapshot', 'issued_at', 'issued_by_core_reference',
     ];
 
     protected function casts(): array
@@ -33,5 +37,15 @@ final class CommercialDocument extends Model
     public function sale(): BelongsTo
     {
         return $this->belongsTo(Sale::class, 'sale_id');
+    }
+
+    public function purchaseOrder(): BelongsTo
+    {
+        return $this->belongsTo(PurchaseOrder::class, 'purchase_order_id');
+    }
+
+    public function purchaseReceipt(): BelongsTo
+    {
+        return $this->belongsTo(PurchaseReceipt::class, 'purchase_receipt_id');
     }
 }

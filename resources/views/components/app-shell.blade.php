@@ -8,6 +8,7 @@
     $navItems = collect([
         ['route' => 'home', 'label' => 'Accueil', 'visible' => true],
         ['route' => 'sell.show', 'label' => 'Vendre', 'visible' => $currentActor?->can(\App\Domain\Commerce\CommercialPermission::SELL)],
+        ['route' => 'purchases.hub', 'label' => 'Acheter', 'visible' => $currentActor?->can(\App\Domain\Commerce\CommercialPermission::VIEW_PURCHASES) || $currentActor?->can(\App\Domain\Commerce\CommercialPermission::MANAGE_PURCHASES)],
         ['route' => 'products.index', 'label' => 'Produits', 'visible' => true],
         ['route' => 'stock.index', 'label' => 'Stock', 'visible' => $currentActor?->can(\App\Domain\Commerce\CommercialPermission::VIEW_STOCK)],
         ['route' => 'documents.index', 'label' => 'Documents', 'visible' => $currentActor?->can(\App\Domain\Commerce\CommercialPermission::VIEW_DOCUMENTS)],
@@ -48,10 +49,10 @@
         {{ $slot }}
     </main>
 
-    <nav class="gp-tabbar" aria-label="Navigation mobile">
+    <nav class="gp-tabbar" aria-label="Navigation mobile" style="grid-template-columns:repeat({{ $navItems->count() }},1fr)">
         @foreach($navItems as $item)
             @if($item['route'] === 'sell.show')
-                <a href="{{ route($item['route']) }}" class="gp-tabbar__sell" @if(request()->routeIs('sell.*')) aria-current="page" @endif>
+                <a href="{{ route($item['route']) }}" class="gp-tabbar__sell" style="grid-column:{{ $loop->index + 1 }}" @if(request()->routeIs('sell.*')) aria-current="page" @endif>
                     <span class="gp-tabbar__icon">＋</span>
                 </a>
             @else

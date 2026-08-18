@@ -21,12 +21,17 @@ final class Product extends Model
 
     protected $fillable = [
         'context_id', 'name', 'sku', 'barcode', 'kind',
-        'sale_price_xof', 'track_stock', 'active', 'unit_label',
+        'sale_price_xof', 'track_stock', 'active', 'unit_label', 'reorder_threshold',
     ];
 
     protected function casts(): array
     {
-        return ['sale_price_xof' => 'integer', 'track_stock' => 'boolean', 'active' => 'boolean'];
+        return [
+            'sale_price_xof' => 'integer',
+            'track_stock' => 'boolean',
+            'active' => 'boolean',
+            'reorder_threshold' => 'decimal:3',
+        ];
     }
 
     public function context(): BelongsTo
