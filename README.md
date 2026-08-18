@@ -80,6 +80,52 @@ La migration détaillée sera documentée dans `docs/legacy/ZUMRA-V1-TO-GPOS.md`
 
 ## Statut
 
-**FOUNDATION / conception initiale** — 18 août 2026.
+**LOT-001 en cours de revue** — fondation applicative Laravel 13 + premier parcours commercial
+vertical (Contexte → Catalogue → Vente → Paiement → Stock → Document → Journal), conforme à
+`docs/implementation/LOT-001-APP-SHELL-COMMERCE-SLICE.md`.
 
-Aucun code applicatif n’est encore considéré comme canonique. Les premières étapes sont : doctrine produit, cartographie V1 → G-POS, contrat satellite, design system, puis premier parcours vertical Vente → Paiement → Stock → Trace.
+## Développement local
+
+Stack : Laravel 13, PHP 8.4, PostgreSQL, Redis, Vite, Blade + Livewire + Alpine (Alpine est fourni
+par Livewire, ne pas en installer une seconde fois).
+
+```bash
+composer install
+npm install
+cp .env.example .env
+php artisan key:generate
+```
+
+Configurez `.env` — PostgreSQL (`DB_*`) et Redis (`REDIS_*`) doivent pointer vers des instances
+réellement démarrées. `GPOS_DEV_CORE_IDENTITY_REFERENCE` définit l'acteur de développement (voir
+« Identité » ci-dessous) — laissez la valeur d'exemple ou changez-la.
+
+```bash
+php artisan migrate
+php artisan db:seed --class=Database\\Seeders\\DevBootstrapSeeder
+npm run build   # ou `npm run dev` pendant le développement
+php artisan serve
+```
+
+Ouvrez `http://127.0.0.1:8000/dev/identite`, saisissez la référence configurée dans
+`GPOS_DEV_CORE_IDENTITY_REFERENCE` (par défaut `IDN-PER-DEV-00000001`), puis rendez-vous sur `/`.
+Le contexte « Boutique de démonstration » et deux produits d'exemple sont prêts à vendre.
+
+### Identité
+
+G-POS ne crée aucun compte humain canonique (`docs/architecture/SATELLITE-CONTRACT.md` §3). Tant
+que la fédération GAMAD Core réelle n'est pas branchée, `/dev/identite` permet de « devenir »
+n'importe quelle référence Core — **uniquement hors production** : la route n'est même pas
+enregistrée quand `APP_ENV=production`, et `DevCoreSessionGateway` refuse de s'exécuter dans cet
+environnement même si elle était liée par erreur (double verrou, voir
+`docs/implementation/LOT-001-APP-SHELL-COMMERCE-SLICE.md` §6.3).
+
+### Tests
+
+```bash
+php artisan test
+```
+
+Les tests tournent contre PostgreSQL (pas sqlite) — le domaine s'appuie sur des verrous de ligne
+(`SELECT ... FOR UPDATE`) pour le stock et la caisse. Créez au préalable la base
+`gpos_core_test` avec le même rôle que `DB_USERNAME`.
